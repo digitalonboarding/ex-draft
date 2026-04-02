@@ -28,7 +28,7 @@ defmodule DraftTree do
                 offset: range["offset"],
                 styles: range["styles"],
                 key: range["key"],
-                text: String.slice(text, range["offset"], range["length"])
+                text: slice_as_codepoints(text, range["offset"], range["length"])
               }
             ]
         )
@@ -64,13 +64,30 @@ defmodule DraftTree do
     Enum.map(children, fn child -> {child, process_tree(child, processor)} end)
     |> Enum.reverse()
     |> Enum.reduce(text, fn {child, child_text}, acc ->
-      {start, rest} = String.split_at(acc, child.offset - offset)
+      {start, rest} = split_at_as_codepoints(acc, child.offset - offset)
 
       {_, finish} =
-        String.split_at(rest, child.offset - offset + child.length - String.length(start))
+        split_at_as_codepoints(rest, child.offset - offset + child.length - String.length(start))
 
       start <> child_text <> finish
     end)
     |> processor.(styles, key)
+  end
+
+  defp slice_as_codepoints(string, offset, length) do
+    string
+    |> String.codepoints()
+    |> Enum.slice(offset, length)
+    |> List.to_string()
+  end
+
+  defp split_at_as_codepoints(string, offset) do
+    {start, finish} =
+      string
+      |> String.codepoints()
+      |> Enum.split(offset)
+      |> then(fn {start, finish} -> {List.to_string(start), List.to_string(finish)} end)
+
+    {start, finish}
   end
 end
