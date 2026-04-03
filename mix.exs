@@ -30,8 +30,8 @@ defmodule Draft.Mixfile do
   # Type "mix help deps" for more examples and options
   defp deps do
     [
-      {:credo, "~> 0.3", only: [:dev, :test]},
-      {:ex_doc, "~> 0.14", only: :dev}
+      {:credo, "~> 1.7", only: [:dev, :test]},
+      {:ex_doc, "~> 0.40", only: :dev}
     ]
   end
 end
