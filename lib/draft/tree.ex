@@ -77,19 +77,22 @@ defmodule DraftTree do
   # Draft.js reports `offset` and `length` in UTF-16 code units (the JavaScript
   # string indexing scheme). Elixir strings are UTF-8, and both String.slice/3
   # (graphemes) and codepoint-based slicing miscount any character outside the
-  # Basic Multilingual Plane — e.g. most emoji (🔴 U+1F534, 🎶 U+1F3B6), which
-  # are a single codepoint but two UTF-16 code units (a surrogate pair). To match
-  # Draft's offsets we convert to UTF-16, slice on 2-byte code-unit boundaries,
-  # then convert back.
-  defp utf16_length(string), do: byte_size(to_utf16(string)) |> div(2)
+  # Basic Multilingual Plane, e.g. most emoji (🔴 U+1F534, 🎶 U+1F3B6), which are
+  # a single codepoint but two UTF-16 code units (a surrogate pair).
+  #
+  # So we convert to UTF-16 and let Elixir's binary syntax index by code unit:
+  # `size(n)-unit(16)` matches n segments of 16 bits, i.e. n UTF-16 code units.
+  defp utf16_length(string), do: div(bit_size(to_utf16(string)), 16)
 
   defp slice_as_utf16(string, offset, length) do
-    <<_::binary-size(offset * 2), slice::binary-size(length * 2), _::binary>> = to_utf16(string)
+    <<_::size(offset)-unit(16), slice::size(length)-unit(16)-binary, _::binary>> =
+      to_utf16(string)
+
     from_utf16(slice)
   end
 
   defp split_at_as_utf16(string, offset) do
-    <<start::binary-size(offset * 2), finish::binary>> = to_utf16(string)
+    <<start::size(offset)-unit(16)-binary, finish::binary>> = to_utf16(string)
     {from_utf16(start), from_utf16(finish)}
   end
 
