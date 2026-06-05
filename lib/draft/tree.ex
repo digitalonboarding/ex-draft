@@ -66,8 +66,7 @@ defmodule DraftTree do
     |> Enum.reduce(text, fn {child, child_text}, acc ->
       {start, rest} = split_at_as_utf16(acc, child.offset - offset)
 
-      {_, finish} =
-        split_at_as_utf16(rest, child.offset - offset + child.length - utf16_length(start))
+      {_, finish} = split_at_as_utf16(rest, child.length)
 
       start <> child_text <> finish
     end)
@@ -85,23 +84,33 @@ defmodule DraftTree do
   defp utf16_length(string), do: div(bit_size(to_utf16(string)), 16)
 
   defp slice_as_utf16(string, offset, length) do
-    <<_::size(offset)-unit(16), slice::size(length)-unit(16)-binary, _::binary>> =
-      to_utf16(string)
+    utf16_bin = to_utf16(string)
 
-    from_utf16(slice)
+    try do
+      <<_::size(offset)-unit(16), slice::size(length)-unit(16)-binary, _::binary>> = utf16_bin
+      from_utf16(slice)
+    rescue
+      MatchError -> ""
+    end
   end
 
   defp split_at_as_utf16(string, offset) do
-    <<start::size(offset)-unit(16)-binary, finish::binary>> = to_utf16(string)
-    {from_utf16(start), from_utf16(finish)}
+    utf16_bin = to_utf16(string)
+
+    try do
+      <<start::size(offset)-unit(16)-binary, finish::binary>> = utf16_bin
+      {from_utf16(start), from_utf16(finish)}
+    rescue
+      MatchError -> {"", ""}
+    end
   end
 
   defp to_utf16(string), do: :unicode.characters_to_binary(string, :utf8, {:utf16, :big})
 
   defp from_utf16(binary) do
     case :unicode.characters_to_binary(binary, {:utf16, :big}, :utf8) do
-      {:incomplete, _acc, _rest} -> ""
-      {:error, _encoded, _rest} -> ""
+      {:incomplete, acc, _rest} -> acc
+      {:error, encoded, _rest} -> encoded
       result when is_binary(result) -> result
     end
   end

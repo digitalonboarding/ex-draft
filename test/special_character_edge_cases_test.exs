@@ -132,8 +132,8 @@ defmodule SpecialCharacterEdgeCasesTest do
     end
   end
 
-  describe "KNOWN ISSUE: Invalid UTF-16 offsets (half surrogate pairs)" do
-    test "half surrogate offset is handled gracefully (no crash)" do
+  describe "KNOWN ISSUE: Invalid UTF-16 lengths (half surrogate pairs)" do
+    test "half surrogate length is handled gracefully (no crash)" do
       input = %{
         "entityMap" => %{},
         "blocks" => [
@@ -149,9 +149,9 @@ defmodule SpecialCharacterEdgeCasesTest do
         ]
       }
 
-      # Invalid UTF-16 offset (lands in middle of surrogate pair) is now handled gracefully
-      # The code no longer crashes with Protocol.UndefinedError
-      # Note: Text reconstruction may be incomplete with invalid offsets, but at least it doesn't crash
+      # Invalid UTF-16 length (slicing only half of a surrogate pair - the emoji is 2 UTF-16 code units)
+      # The code now handles this gracefully without crashing
+      # Text reconstruction may be incomplete with invalid lengths, but at least it doesn't crash
       output = to_html(input)
       assert is_binary(output)
       assert String.starts_with?(output, "<p>")
