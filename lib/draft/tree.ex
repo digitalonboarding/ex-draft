@@ -97,5 +97,12 @@ defmodule DraftTree do
   end
 
   defp to_utf16(string), do: :unicode.characters_to_binary(string, :utf8, {:utf16, :big})
-  defp from_utf16(binary), do: :unicode.characters_to_binary(binary, {:utf16, :big}, :utf8)
+
+  defp from_utf16(binary) do
+    case :unicode.characters_to_binary(binary, {:utf16, :big}, :utf8) do
+      {:incomplete, _acc, _rest} -> ""
+      {:error, _encoded, _rest} -> ""
+      result when is_binary(result) -> result
+    end
+  end
 end
