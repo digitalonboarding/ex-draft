@@ -4,7 +4,11 @@ defmodule DraftTree do
   end
 
   def build_tree(ranges, text) do
-    root_node = %Node{text: text, length: utf16_length(text), styles: nil}
+    root_node = %Node{
+      text: text,
+      length: text |> String.codepoints() |> Enum.count(),
+      styles: nil
+    }
 
     Enum.reduce(ranges, root_node, fn range, tree -> insert_node(tree, range, text) end)
   end
@@ -28,7 +32,7 @@ defmodule DraftTree do
                 offset: range["offset"],
                 styles: range["styles"],
                 key: range["key"],
-                text: slice_as_utf16(text, range["offset"], range["length"])
+                text: slice_as_codepoints(text, range["offset"], range["length"])
               }
             ]
         )
@@ -64,54 +68,25 @@ defmodule DraftTree do
     Enum.map(children, fn child -> {child, process_tree(child, processor)} end)
     |> Enum.reverse()
     |> Enum.reduce(text, fn {child, child_text}, acc ->
-      {start, rest} = split_at_as_utf16(acc, child.offset - offset)
+      {start, rest} = split_at_as_codepoints(acc, child.offset - offset)
 
-      {_, finish} = split_at_as_utf16(rest, child.length)
+      {_, finish} = split_at_as_codepoints(rest, child.length)
 
       start <> child_text <> finish
     end)
     |> processor.(styles, key)
   end
 
-  # Draft.js reports `offset` and `length` in UTF-16 code units (the JavaScript
-  # string indexing scheme). Elixir strings are UTF-8, and both String.slice/3
-  # (graphemes) and codepoint-based slicing miscount any character outside the
-  # Basic Multilingual Plane, e.g. most emoji (🔴 U+1F534, 🎶 U+1F3B6), which are
-  # a single codepoint but two UTF-16 code units (a surrogate pair).
-  #
-  # So we convert to UTF-16 and let Elixir's binary syntax index by code unit:
-  # `size(n)-unit(16)` matches n segments of 16 bits, i.e. n UTF-16 code units.
-  defp utf16_length(string), do: div(bit_size(to_utf16(string)), 16)
-
-  defp slice_as_utf16(string, offset, length) do
-    utf16_bin = to_utf16(string)
-
-    try do
-      <<_::size(offset)-unit(16), slice::size(length)-unit(16)-binary, _::binary>> = utf16_bin
-      from_utf16(slice)
-    rescue
-      MatchError -> ""
-    end
+  defp slice_as_codepoints(string, offset, length) do
+    string
+    |> String.codepoints()
+    |> Enum.drop(offset)
+    |> Enum.take(length)
+    |> Enum.join()
   end
 
-  defp split_at_as_utf16(string, offset) do
-    utf16_bin = to_utf16(string)
-
-    try do
-      <<start::size(offset)-unit(16)-binary, finish::binary>> = utf16_bin
-      {from_utf16(start), from_utf16(finish)}
-    rescue
-      MatchError -> {"", ""}
-    end
-  end
-
-  defp to_utf16(string), do: :unicode.characters_to_binary(string, :utf8, {:utf16, :big})
-
-  defp from_utf16(binary) do
-    case :unicode.characters_to_binary(binary, {:utf16, :big}, :utf8) do
-      {:incomplete, acc, _rest} -> acc
-      {:error, encoded, _rest} -> encoded
-      result when is_binary(result) -> result
-    end
+  defp split_at_as_codepoints(string, offset) do
+    {start, rest} = string |> String.codepoints() |> Enum.split(offset)
+    {Enum.join(start), Enum.join(rest)}
   end
 end

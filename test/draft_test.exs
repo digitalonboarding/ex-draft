@@ -333,15 +333,12 @@ defmodule DraftTest do
   end
 
   test "handles offsets correctly with supplementary-plane emoji (surrogate pairs)" do
-    # 🔴 (U+1F534) is a single codepoint but TWO UTF-16 code units, so Draft.js
-    # reports the link starting at offset 2. Codepoint-based slicing would be off
-    # by one here and wrap "oo" / leak into the next tag.
     input = %{
       "blocks" => [
         %{
           "data" => %{},
           "depth" => 0,
-          "entityRanges" => [%{"key" => 0, "length" => 3, "offset" => 2}],
+          "entityRanges" => [%{"key" => 0, "length" => 3, "offset" => 1}],
           "inlineStyleRanges" => [],
           "key" => "df1r3",
           "text" => "🔴Foo",

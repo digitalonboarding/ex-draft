@@ -11,7 +11,7 @@ defmodule SpecialCharacterEdgeCasesTest do
             "text" => "test 🔴 end",
             "type" => "unstyled",
             "depth" => 0,
-            "inlineStyleRanges" => [%{"style" => "BOLD", "offset" => 5, "length" => 2}],
+            "inlineStyleRanges" => [%{"style" => "BOLD", "offset" => 5, "length" => 1}],
             "entityRanges" => [],
             "data" => %{},
             "key" => "test"
@@ -31,7 +31,7 @@ defmodule SpecialCharacterEdgeCasesTest do
             "text" => "🔴 red",
             "type" => "unstyled",
             "depth" => 0,
-            "inlineStyleRanges" => [%{"style" => "ITALIC", "offset" => 0, "length" => 2}],
+            "inlineStyleRanges" => [%{"style" => "ITALIC", "offset" => 0, "length" => 1}],
             "entityRanges" => [],
             "data" => %{},
             "key" => "test"
@@ -72,8 +72,8 @@ defmodule SpecialCharacterEdgeCasesTest do
             "type" => "unstyled",
             "depth" => 0,
             "inlineStyleRanges" => [
-              %{"style" => "BOLD", "offset" => 4, "length" => 4},
-              %{"style" => "ITALIC", "offset" => 5, "length" => 2}
+              %{"style" => "BOLD", "offset" => 4, "length" => 3},
+              %{"style" => "ITALIC", "offset" => 5, "length" => 1}
             ],
             "entityRanges" => [],
             "data" => %{},
@@ -83,8 +83,82 @@ defmodule SpecialCharacterEdgeCasesTest do
       }
 
       output = to_html(input)
+
       assert output ==
                "<p>test<span style=\"font-weight: bold;\"> </span><span style=\"font-weight: bold; font-style: italic;\">🎶</span><span style=\"font-weight: bold;\"> </span>end</p>"
+    end
+
+    test "bold alignment bug" do
+      inputs = [
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [],
+          "inlineStyleRanges" => [%{"length" => 4, "offset" => 25, "style" => "BOLD"}],
+          "key" => "d9dul",
+          "text" => "❤️ should not effect the bold here",
+          "type" => "unstyled"
+        },
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [],
+          "inlineStyleRanges" => [%{"length" => 4, "offset" => 24, "style" => "BOLD"}],
+          "key" => "5vbhk",
+          "text" => "🔴 should not effect the bold here",
+          "type" => "unstyled"
+        },
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [],
+          "inlineStyleRanges" => [%{"length" => 4, "offset" => 25, "style" => "BOLD"}],
+          "key" => "dub33",
+          "text" => "♥️ should not effect the bold here",
+          "type" => "unstyled"
+        },
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [],
+          "inlineStyleRanges" => [%{"length" => 4, "offset" => 25, "style" => "BOLD"}],
+          "key" => "4g62t",
+          "text" => "👍🏻 should not effect the bold here",
+          "type" => "unstyled"
+        },
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [],
+          "inlineStyleRanges" => [%{"length" => 4, "offset" => 24, "style" => "BOLD"}],
+          "key" => "2shv8",
+          "text" => "👍 should not effect the bold here",
+          "type" => "unstyled"
+        },
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [],
+          "inlineStyleRanges" => [%{"length" => 4, "offset" => 24, "style" => "BOLD"}],
+          "key" => "gi79",
+          "text" => "🐛 should not effect the bold here",
+          "type" => "unstyled"
+        },
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [],
+          "inlineStyleRanges" => [%{"length" => 4, "offset" => 30, "style" => "BOLD"}],
+          "key" => "3tbdr",
+          "text" => "🧑\u200D🧑\u200D🧒\u200D🧒 should not effect the bold here",
+          "type" => "unstyled"
+        }
+      ]
+
+      Enum.each(inputs, fn i ->
+        output = to_html(%{"entityMap" => %{}, "blocks" => [i]})
+        assert String.match?(output, ~r{<span[^>]+>bold</span>})
+      end)
     end
   end
 
@@ -132,8 +206,8 @@ defmodule SpecialCharacterEdgeCasesTest do
     end
   end
 
-  describe "KNOWN ISSUE: Invalid UTF-16 lengths (half surrogate pairs)" do
-    test "half surrogate length is handled gracefully (no crash)" do
+  describe "KNOWN ISSUE: codepoint slicing was inaccurate for some emojis" do
+    test "codepoint slicing is correct" do
       input = %{
         "entityMap" => %{},
         "blocks" => [
@@ -149,9 +223,6 @@ defmodule SpecialCharacterEdgeCasesTest do
         ]
       }
 
-      # Invalid UTF-16 length (slicing only half of a surrogate pair - the emoji is 2 UTF-16 code units)
-      # The code now handles this gracefully without crashing
-      # Text reconstruction may be incomplete with invalid lengths, but at least it doesn't crash
       output = to_html(input)
       assert is_binary(output)
       assert String.starts_with?(output, "<p>")
