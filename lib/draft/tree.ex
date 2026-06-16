@@ -4,7 +4,11 @@ defmodule DraftTree do
   end
 
   def build_tree(ranges, text) do
-    root_node = %Node{text: text, length: String.length(text), styles: nil}
+    root_node = %Node{
+      text: text,
+      length: text |> String.codepoints() |> Enum.count(),
+      styles: nil
+    }
 
     Enum.reduce(ranges, root_node, fn range, tree -> insert_node(tree, range, text) end)
   end
@@ -66,8 +70,7 @@ defmodule DraftTree do
     |> Enum.reduce(text, fn {child, child_text}, acc ->
       {start, rest} = split_at_as_codepoints(acc, child.offset - offset)
 
-      {_, finish} =
-        split_at_as_codepoints(rest, child.offset - offset + child.length - String.length(start))
+      {_, finish} = split_at_as_codepoints(rest, child.length)
 
       start <> child_text <> finish
     end)
@@ -77,17 +80,13 @@ defmodule DraftTree do
   defp slice_as_codepoints(string, offset, length) do
     string
     |> String.codepoints()
-    |> Enum.slice(offset, length)
-    |> List.to_string()
+    |> Enum.drop(offset)
+    |> Enum.take(length)
+    |> Enum.join()
   end
 
   defp split_at_as_codepoints(string, offset) do
-    {start, finish} =
-      string
-      |> String.codepoints()
-      |> Enum.split(offset)
-      |> then(fn {start, finish} -> {List.to_string(start), List.to_string(finish)} end)
-
-    {start, finish}
+    {start, rest} = string |> String.codepoints() |> Enum.split(offset)
+    {Enum.join(start), Enum.join(rest)}
   end
 end

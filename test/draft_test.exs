@@ -332,6 +332,32 @@ defmodule DraftTest do
     assert to_html(input) == output
   end
 
+  test "handles offsets correctly with supplementary-plane emoji (surrogate pairs)" do
+    input = %{
+      "blocks" => [
+        %{
+          "data" => %{},
+          "depth" => 0,
+          "entityRanges" => [%{"key" => 0, "length" => 3, "offset" => 1}],
+          "inlineStyleRanges" => [],
+          "key" => "df1r3",
+          "text" => "🔴Foo",
+          "type" => "unstyled"
+        }
+      ],
+      "entityMap" => %{
+        "0" => %{
+          "data" => %{"target" => "_blank", "url" => "https://google.com"},
+          "mutability" => "MUTABLE",
+          "type" => "LINK"
+        }
+      }
+    }
+
+    output = "<p>🔴<a href=\"https://google.com\">Foo</a></p>"
+    assert to_html(input) == output
+  end
+
   test "wraps overlapping entities and inline styles" do
     input = %{
       "entityMap" => %{
